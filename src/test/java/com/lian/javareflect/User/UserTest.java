@@ -1,13 +1,11 @@
 package com.lian.javareflect.User;
 
 import com.lian.javareflect.JavareflectApplication;
-import com.lian.javareflect.annotion.TestAnnotation;
+import com.lian.javareflect.domutil.annotion.MyMethod;
 import com.lian.javareflect.mapper.UserMapper;
 import com.lian.javareflect.model.User;
 import com.lian.javareflect.service.UserService;
 import com.lian.javareflect.service.impl.UserServiceImpl;
-import javafx.beans.binding.ObjectExpression;
-import net.bytebuddy.implementation.bytecode.assign.TypeCasting;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -224,10 +222,9 @@ public class UserTest {
         for(int i=0;i<methods.length;i++){
             Annotation[] declaredAnnotations = methods[i].getDeclaredAnnotations();
             for(Annotation annotation:declaredAnnotations){
-                if(annotation instanceof TestAnnotation){
-                    TestAnnotation testAnnotation = (TestAnnotation) annotation;
-                    System.out.println("name:"+testAnnotation.name());
-                    System.out.println("value:"+testAnnotation.value());
+                if(annotation instanceof MyMethod){
+                    MyMethod myAnnotation = (MyMethod) annotation;
+                    System.out.println(myAnnotation.function());
                 }
             }
         }

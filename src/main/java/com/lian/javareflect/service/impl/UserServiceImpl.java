@@ -1,7 +1,9 @@
 package com.lian.javareflect.service.impl;
 
 
-import com.lian.javareflect.annotion.TestAnnotation;
+import com.lian.javareflect.domutil.annotion.MyClass;
+import com.lian.javareflect.domutil.annotion.MyMethod;
+import com.lian.javareflect.domutil.annotion.MyParam;
 import com.lian.javareflect.mapper.UserMapper;
 import com.lian.javareflect.mapper.impl.UserMapperImpl;
 import com.lian.javareflect.model.User;
@@ -14,18 +16,21 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 @Service
+@MyClass(classInfo = "用户信息服务")
 public class UserServiceImpl implements UserService {
 
     @Autowired
     UserMapper userMapper;
 
     @Override
-    public User sel(int id){
+    @MyMethod(function = "查询用户信息")
+    public User sel(@MyParam(comment = "用户主键标识") int id){
         return userMapper.sel(id);
     }
 
     @Override
-    public int add(User user) {
+    @MyMethod(function = "添加用户信息")
+    public int add(@MyParam(comment = "添加的用户") User user) {
         return userMapper.add(user);
     }
 
@@ -41,8 +46,8 @@ public class UserServiceImpl implements UserService {
      * @throws InvocationTargetException    呵呵
      */
     @Override
-    @TestAnnotation(name = "hehe",value = "hehe")
-    public int addUserByJdbc(User user, JdbcTemplate jdbcTemplate) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InstantiationException, InvocationTargetException {
+    @MyMethod(function = "使用jdbc来添加用户")
+    public int addUserByJdbc(@MyParam(comment = "添加的用户") User user, @MyParam(comment = "数据源操作对象") JdbcTemplate jdbcTemplate) throws ClassNotFoundException, NoSuchMethodException, IllegalAccessException, InstantiationException, InvocationTargetException {
         System.out.println("我找到这个方法了----->");
         Class<?> aClass = Class.forName("com.lian.javareflect.mapper.impl.UserMapperImpl");
         Method jdbcAdd = aClass.getDeclaredMethod("jdbcAdd", User.class,JdbcTemplate.class);
@@ -52,12 +57,14 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public User upd(User user) {
+    @MyMethod(function = "更新用户信息")
+    public User upd(@MyParam(comment = "更新的用户") User user) {
         return userMapper.upd(user);
     }
 
     @Override
-    public User del(int id) {
+    @MyMethod(function = "删除用户信息")
+    public User del(@MyParam(comment = "用户主键标识") int id) {
         return userMapper.del(id);
     }
 }

@@ -1,7 +1,6 @@
 package com.lian.javareflect.mapper;
 
 import com.lian.javareflect.model.User;
-import org.apache.ibatis.annotations.Select;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 

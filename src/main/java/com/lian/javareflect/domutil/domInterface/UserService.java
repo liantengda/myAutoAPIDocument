@@ -1,4 +1,4 @@
-package com.lian.javareflect.service;
+package com.lian.javareflect.domutil.domInterface;
 
 import com.lian.javareflect.domutil.annotion.MyClass;
 import com.lian.javareflect.domutil.annotion.MyMethod;

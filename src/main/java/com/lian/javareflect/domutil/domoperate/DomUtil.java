@@ -1,71 +1,131 @@
-package com.lian.javareflect.domoperate;
+package com.lian.javareflect.domutil.domoperate;
 
 
-import com.lian.javareflect.service.UserService;
+import com.lian.javareflect.domutil.annotion.MyClass;
+import com.lian.javareflect.domutil.annotion.MyMethod;
 
+import com.lian.javareflect.domutil.annotion.MyParam;
+import com.lian.javareflect.domutil.annotion.MyReturn;
 import org.apache.poi.xwpf.usermodel.*;
 import org.openxmlformats.schemas.wordprocessingml.x2006.main.*;
 import java.io.*;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.math.BigInteger;
+import java.net.URL;
 import java.util.ArrayList;
+import java.util.List;
 
-
+/**
+ * 实现类和接口在反射的时候有很大区别
+ * 实现类会把object的方法全都带出来，而接口则没有，如果要使他们一致，必须使用declaredMethod。自己申明的方法，才可以
+ *
+ * Class.forName()里的参数必须是相对路径，不可以使用绝对路径，即使是绝对到其他文件夹下的target也不可以,必须用相对于ClassPath下的Class包括package
+ */
 public class DomUtil {
 
+    //想要输出的目录地址
+    private static String destDir = "E:\\reflect/";
+    //想要输出的文件名称
+    private static String fileName = "liantengda.doc";
+    //选择相对路径扫描当前项目接口的包路径
+    private static String baseRelativePath =null;
+    //选择绝对路径扫描接口的包路径
+    private static String baseAbsolutPath = "E:\\project\\autoAPIDocument\\src\\main\\java\\com\\lian\\javareflect\\domutil\\domInterface";
+    static {
+        URL resource = DomUtil.class.getResource("");
+        String path = resource.getPath();
+        int target = path.indexOf("autoAPIDocument");
+        baseRelativePath = path.substring(1, target);
+        System.out.println("besePath------->"+baseRelativePath);
+    }
 
-    private static String fileDir = "E:\\reflect/";
-    private static String errorWordFilePath = "liantengda.doc";
-    private static String errorExcelFilePath = "liantengda.doc";
 
     public static void main(String[] args) {
         ArrayList<String> list = new ArrayList<>();
-        autoGenerateWordByAPI(fileDir,errorWordFilePath,"WORD");
+        autoGenerateWordByAPI(destDir,fileName);
     }
 
     /**
-     * 自动生成文档类
-     * @param fileDir
-     * @param filePath
-     * @param type
+     * 遍历接口文档
+     * @param file  遍历的文件夹
+     * @param level 文件层级标识
      */
-    private static void autoGenerateWordByAPI(String fileDir, String filePath, String type) {
-        Class clz = UserService.class;
-
+    private static void listInterfaces(File file, String level, List<Class> list){
+        String originLevel = "-";
+        if(file.isDirectory()){
+            level = level+originLevel;
+            File[] files = file.listFiles();
+            for (File subFile : files) {
+                listInterfaces(subFile,level,list);
+            }
+        }else{
+            try {
+                String fileAbsolutePath = file.getPath();
+                fileAbsolutePath = fileAbsolutePath.replace("\\", "/");
+                int javaIndex = fileAbsolutePath.indexOf("java");
+                String replaceJava = fileAbsolutePath.substring(javaIndex+5, fileAbsolutePath.length());
+                String replaceDot = replaceJava.replace("/", ".");
+                String classAbsolutePath = replaceDot.substring(0,replaceDot.length()-5);
+                Class<?> aClass = Class.forName(classAbsolutePath);
+                if(!aClass.getSimpleName().startsWith("I")){
+                    list.add(aClass);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    /**
+     * 自动生成文档类
+     * @param destDir   输出路径
+     * @param fileName  文件名
+     */
+    private static void autoGenerateWordByAPI(String destDir, String fileName) {
+        //扫描的路径
+        File file = new File(baseAbsolutPath);
+        //创建一个文档
         XWPFDocument document = new XWPFDocument();
         OutputStream stream = null;
         BufferedOutputStream bufferStream = null;
         try {
-            File dir = new File(fileDir);
+            //文件操作
+            File dir = new File(destDir);
             if (!dir.exists()) {
                 dir.mkdirs();
             }
-            stream = new FileOutputStream(new File(fileDir+filePath));
+            stream = new FileOutputStream(new File(destDir+fileName));
             bufferStream = new BufferedOutputStream(stream, 1024);
-
-            String simpleName = clz.getSimpleName();
-            //添加文章标题
-            writeHeader(document,type,simpleName);
-            Method[] methods = clz.getMethods();
-            for (int i=0;i<methods.length;i++){
-                String methodName = methods[i].getName();
-                if(methodName.startsWith("get")||methodName.startsWith("sel")||methodName.startsWith("list")){
-                    String  name = "查询用户基本信息";
-                    //添加段落
-                    writeParaTwith(document,methods[i],i,name,clz);
-                }else if(methods[i].getName().startsWith("upd")){
-                    String  name = "修改用户基本信息";
-                    //添加段落
-                    writeParaTwith(document,methods[i],i,name,clz);
-                }else if(methods[i].getName().startsWith("del")){
-                    String  name = "删除用户基本信息";
-                    //添加段落
-                    writeParaTwith(document,methods[i],i,name,clz);
-                }else if(methods[i].getName().startsWith("add")){
-                    String  name = "添加用户基本信息";
-                    //添加段落
-                    writeParaTwith(document,methods[i],i,name,clz);
+            //写入操作
+            ArrayList<Class> classes= new ArrayList<>();
+            listInterfaces(file, "", classes);
+            for(int k = 0;k<classes.size();k++){
+                Class clz = classes.get(k);
+                String  classInfo = "";
+                Annotation[] classAnnotations = clz.getDeclaredAnnotations();
+                for (Annotation annotation:classAnnotations){
+                    if(annotation instanceof MyClass){
+                        MyClass myClass = (MyClass) annotation;
+                        classInfo = myClass.classInfo();
+                    }
+                }
+                classInfo = classInfo+"("+clz.getSimpleName()+")";
+                //添加文章标题
+                writeHeader(document,classInfo,k);
+                Method[] methods = clz.getDeclaredMethods();
+                for (int i=0;i<methods.length;i++){
+                    String methodFunc = "";
+                    Annotation[] declaredAnnotations = methods[i].getDeclaredAnnotations();
+                    for (Annotation annotation:declaredAnnotations){
+                        if(annotation instanceof MyMethod){
+                            MyMethod myMethod = (MyMethod) annotation;
+                            methodFunc = myMethod.function();
+                            System.out.println(methodFunc);
+                        }
+                    }
+                    //开始写入
+                    writeParaTwith(document,methods[i],k,i,methodFunc,clz);
                 }
             }
             document.write(stream);
@@ -94,29 +154,23 @@ public class DomUtil {
         }
     }
 
+
     /**
      * 创建文章题目方法
      * @param document  dom节点树
-     * @param type  文档后缀类型
+     * @param simpleName
      */
-    public static void writeHeader(XWPFDocument document,String type,String simpleName){
+    public static void writeHeader(XWPFDocument document,String simpleName,int k){
         // 创建一个段落           文章题目
         XWPFParagraph p1 = document.createParagraph();
-        // 设置居中
-        p1.setAlignment(ParagraphAlignment.CENTER);
+        // 创建一段文本
         XWPFRun r1 = p1.createRun();
         // 是否加粗
         r1.setBold(true);
         // 与下一行的距离
         r1.setTextPosition(30);
-        if (type.equals("EXCEL")) {
-            // 段落名称
-            r1.setText(simpleName);
-        }
-        if (type.equals("WORD")) {
-            // 段落名称
-            r1.setText(simpleName);
-        }
+        //设置内容
+        r1.setText("1.1."+(k+1)+"."+simpleName);
         // 字体大小
         r1.setFontSize(18);// 字体大小
         // 增加换行
@@ -128,14 +182,13 @@ public class DomUtil {
      * @param document
      * @param method
      */
-    public static void writeParaTwith(XWPFDocument document, Method method,int index,String name,Class clz){
-
+    public static void writeParaTwith(XWPFDocument document, Method method,int k,int index,String name,Class clz){
         // 创建第二个段落
         XWPFParagraph p2 = document.createParagraph();
         XWPFRun r2 = p2.createRun();
         // 是否加粗
         r2.setBold(true);
-        r2.setText("1.1.1."+(index + 1)+"." + name);
+        r2.setText("1.1."+(k+1)+"."+(index + 1)+"." + name);
         // 增加换行
         r2.addCarriageReturn();
         r2.setFontFamily("仿宋");
@@ -178,8 +231,14 @@ public class DomUtil {
         // 设置字体
         r3.setFontFamily("仿宋");
         r3.setFontSize(11);// 字体大小
-
         String function = "有什么功能";
+        Annotation[] declaredAnnotations = method.getDeclaredAnnotations();
+        for (Annotation annotation:declaredAnnotations){
+            if(annotation instanceof MyMethod){
+                MyMethod myMethod = (MyMethod) annotation;
+                function = myMethod.function();
+            }
+        }
         //写出第四段
         operatorText(document,function);
     }
@@ -207,7 +266,7 @@ public class DomUtil {
         r3.setFontSize(11);// 字体大小
 
         //服务内容
-        String service = clz.getPackage().getName();
+        String service = clz.getName();
         //写出第四段
         operatorText(document,service);
     }
@@ -293,9 +352,16 @@ public class DomUtil {
         r3.setFontFamily("仿宋");
         r3.setFontSize(11);// 字体大小
 
-
-        String reference1 = "在spring Provider配置文件中引入"+clz.getSimpleName();
-        String reference2 = "<dubbo:reference id=\""+(new StringBuilder()).append(Character.toLowerCase(clz.getName().charAt(0))).append(clz.getName().substring(1)).toString()+"\" interface=\""+clz.getPackage().getName()+"\"/>";
+        String serviceName = "";
+        Annotation[] declaredAnnotations = clz.getDeclaredAnnotations();
+        for(Annotation annotation:declaredAnnotations){
+            if(annotation instanceof MyClass){
+                MyClass myClass = (MyClass) annotation;
+                serviceName = myClass.classInfo();
+            }
+        }
+        String reference1 = "在spring Provider配置文件中引入"+serviceName+"服务";
+        String reference2 = "<dubbo:reference id=\""+(new StringBuilder()).append(Character.toLowerCase(clz.getSimpleName().charAt(0))).append(clz.getSimpleName().substring(1)).toString()+"\" interface=\""+clz.getName()+"\"/>";
         //写出第四段
         operatorText(document,reference1);
         operatorText(document,reference2);
@@ -360,7 +426,7 @@ public class DomUtil {
         Class<?> returnType = method.getReturnType();
         XWPFTableRow row2 = table.createRow();
         setCellType(row2,colSize,false);
-        setOutParamCellFont(row2,colSize,returnType);
+        setOutParamCellFont(row2,colSize,returnType,method);
     }
 
     /**
@@ -420,6 +486,12 @@ public class DomUtil {
         r4.setFontSize(11);// 字体大小
     }
 
+    /**
+     * 操作表格方法
+     * @param document  节点树
+     * @param method    反射方法
+     * @param clz   反射类
+     */
     public static void operatorTable(XWPFDocument document,Method method,Class clz){
         int rowSize = 1;
         int colSize = 6;
@@ -447,7 +519,7 @@ public class DomUtil {
      * @param colSize
      * @param returnType
      */
-    private static void setOutParamCellFont(XWPFTableRow row,int colSize,Class returnType){
+    private static void setOutParamCellFont(XWPFTableRow row,int colSize,Class returnType,Method method){
 
         for(int i=0;i<colSize;i++){
             //表头数据填充
@@ -457,7 +529,13 @@ public class DomUtil {
                     headContent = new StringBuilder().append(Character.toLowerCase(returnType.getSimpleName().charAt(0))).append(returnType.getSimpleName().substring(1)).toString();
                     break;
                 case 1:
-                    headContent = "参数名称";
+                    Annotation[] declaredAnnotations = method.getDeclaredAnnotations();
+                    for(Annotation annotation:declaredAnnotations){
+                        if(annotation instanceof MyReturn){
+                            MyReturn myParam = (MyReturn) annotation;
+                            headContent = myParam.comment();
+                        }
+                    }
                     break;
                 case 2:
                     headContent = returnType.getSimpleName();
@@ -503,7 +581,13 @@ public class DomUtil {
                     headContent = parameter.getName();
                     break;
                 case 1:
-                    headContent = "参数名称";
+                    Annotation[] declaredAnnotations = parameter.getDeclaredAnnotations();
+                    for(Annotation annotation:declaredAnnotations){
+                        if(annotation instanceof MyParam){
+                            MyParam myParam = (MyParam) annotation;
+                            headContent = myParam.comment();
+                        }
+                    }
                     break;
                 case 2:
                     headContent = parameter.getType().getSimpleName();
